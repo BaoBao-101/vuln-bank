@@ -6,6 +6,8 @@ A deliberately vulnerable web application for practicing application security te
 
 ![image](https://github.com/user-attachments/assets/7fda0106-b083-48d6-8629-f7ee3c8eb73d)
 
+For the Ubuntu SQL injection logging and local LLM experiment, see [lab/README.md](lab/README.md).
+
 ## Overview
 
 This project is a simple banking application with multiple security vulnerabilities built in. It's designed to help security engineers, developers, interns, QA analyst and DevSecOps practitioners learn about:

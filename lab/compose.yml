@@ -1,0 +1,71 @@
+name: vulnbank-research
+services:
+  db:
+    build:
+      context: .
+      dockerfile: postgres.Dockerfile
+    environment:
+      POSTGRES_DB: vulnerable_bank
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: lab-only-password
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pgaudit
+      - -c
+      - logging_collector=on
+      - -c
+      - log_destination=jsonlog
+      - -c
+      - log_directory=/var/lib/postgresql/data/lab_logs
+      - -c
+      - log_filename=postgresql-%Y%m%d-%H%M%S.log
+      - -c
+      - log_rotation_age=0
+      - -c
+      - log_rotation_size=0
+      - -c
+      - log_timezone=UTC
+    volumes:
+      - lab_db:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/10-audit.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d vulnerable_bank"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    mem_limit: 768m
+  web:
+    build:
+      context: ..
+    command: [python, -m, lab.web]
+    environment:
+      DB_HOST: db
+      DB_NAME: vulnerable_bank
+      DB_USER: postgres
+      DB_PASSWORD: lab-only-password
+      DB_PORT: "5432"
+      DB_STATEMENT_TIMEOUT_MS: "5000"
+      LAB_GROUND_TRUTH: /lab-results/ground_truth.jsonl
+    ports:
+      - "127.0.0.1:${LAB_WEB_PORT:-5080}:5000"
+    volumes:
+      - ./results:/lab-results
+    depends_on:
+      db:
+        condition: service_healthy
+    mem_limit: 768m
+  ollama:
+    image: ollama/ollama:latest
+    profiles: [llm]
+    environment:
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
+    ports:
+      - "127.0.0.1:${LAB_OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - lab_models:/root/.ollama
+    mem_limit: 5g
+volumes:
+  lab_db:
+  lab_models:
