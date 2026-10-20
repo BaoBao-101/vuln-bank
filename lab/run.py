@@ -53,6 +53,18 @@ def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def collect_stats():
+    """Compose stats accepts one service; resource snapshots are optional."""
+    snapshots, errors = [], {}
+    for service in ("db", "web"):
+        try:
+            snapshots.append(docker("stats", "--no-stream", "--format", "{{json .}}", service).strip())
+        except (RuntimeError, OSError) as exc:
+            errors[service] = str(exc)
+            print(f"Warning: resource stats unavailable for {service}: {exc}", flush=True)
+    return "\n".join(value for value in snapshots if value), errors
+
+
 def request_json(url, payload=None, headers=None):
     req = urllib.request.Request(url, data=json.dumps(payload).encode() if payload is not None else None,
                                  headers={"Content-Type": "application/json", **(headers or {})})
@@ -160,7 +172,7 @@ def main():
                               "elapsed_ms": (time.perf_counter() - tick) * 1000,
                               "body_bytes": len(body)})
         wall = time.perf_counter() - started
-        stats = docker("stats", "--no-stream", "--format", "{{json .}}", "db", "web")
+        stats, stats_errors = collect_stats()
         docker("stop", "web")
         # Change second before rotation so PostgreSQL closes the old file.
         time.sleep(1.1)
@@ -179,6 +191,7 @@ def main():
         latencies = sorted(row["elapsed_ms"] for row in responses)
         write_json(directory / "cost.json", {"wall_seconds": wall, "requests": len(manifest),
             "requests_per_second": len(manifest) / wall, "container_stats_snapshot": stats,
+            "container_stats_errors": stats_errors,
             "log_bytes": (directory / "postgres.jsonl").stat().st_size,
             "log_bytes_per_request": (directory / "postgres.jsonl").stat().st_size / len(manifest),
             "http_latency_ms_median": statistics.median(latencies),

@@ -149,6 +149,9 @@ Chọn cấu hình nhỏ nhất hiện dựa vào log bytes và point recall >= 
 Có cận dưới Wilson 95% để thấy mức bất định; đây không phải khoảng tin cậy đã
 hiệu chỉnh tương quan trong phiên. Sample nhỏ thường chưa đủ để cận dưới đạt .95.
 Chi phí ghi log gồm cả admin/health check, stats chỉ là snapshot, chưa phải peak.
+Docker Compose stats được lấy riêng từng service. Nếu stats không khả dụng,
+bộ chạy tiếp tục xuất log/chấm điểm và ghi lỗi vào `cost.json` trường
+`container_stats_errors`; số liệu tài nguyên bị thiếu không được xem là bằng 0.
 
 ## 4. RQ2: rule và LLM local
 
